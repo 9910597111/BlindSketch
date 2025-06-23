@@ -9,7 +9,55 @@ BlindSketch è un gioco di disegno multiplayer dove un giocatore deve disegnare 
 3. **Punteggi**: Chi indovina e chi disegna ricevono punti
 4. **Vincitore**: Dopo tutti i round, vince chi ha più punti!
 
-## 🚀 Installazione e Avvio
+## 🚀 Deploy in Produzione
+
+### 1. Deploy Backend su Render
+
+1. Vai su [Render.com](https://render.com) e crea un account
+2. Clicca "New +" → "Web Service"
+3. Connetti il tuo repository GitHub
+4. Configura il servizio:
+   - **Name**: `blindsketch-backend` (o nome a tua scelta)
+   - **Environment**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `node server/index.js`
+   - **Instance Type**: `Free`
+
+5. Aggiungi le variabili d'ambiente:
+   - `CLIENT_URL`: `https://your-netlify-app-name.netlify.app`
+   - `FRONTEND_URL`: `https://your-netlify-app-name.netlify.app`
+   - `NODE_ENV`: `production`
+
+6. Clicca "Create Web Service"
+7. **Copia l'URL del tuo servizio** (es: `https://blindsketch-backend.onrender.com`)
+
+### 2. Deploy Frontend su Netlify
+
+1. Vai su [Netlify.com](https://netlify.com) e crea un account
+2. Clicca "Add new site" → "Import an existing project"
+3. Connetti il tuo repository GitHub
+4. Configura il build:
+   - **Build command**: `npm run build`
+   - **Publish directory**: `dist`
+
+5. Aggiungi le variabili d'ambiente:
+   - `VITE_SERVER_URL`: `https://your-render-app-name.onrender.com` (URL del backend)
+
+6. Clicca "Deploy site"
+
+### 3. Aggiorna le Configurazioni
+
+1. **Nel file `src/hooks/useSocket.ts`**, sostituisci:
+   ```typescript
+   serverUrl = 'https://your-render-app-name.onrender.com';
+   ```
+   Con l'URL effettivo del tuo backend Render.
+
+2. **Su Render**, aggiorna le variabili d'ambiente con l'URL effettivo di Netlify.
+
+3. **Rideploy** entrambi i servizi per applicare le modifiche.
+
+## 🛠️ Sviluppo Locale
 
 ### Prerequisiti
 - Node.js (versione 16 o superiore)
@@ -47,6 +95,43 @@ npm run client
 npm run build
 ```
 
+## 🔧 Risoluzione Problemi
+
+### "Non riesco a creare/entrare in stanze"
+
+1. **Verifica le URL**: Assicurati che le variabili d'ambiente siano configurate correttamente
+2. **Controlla i CORS**: Il backend deve permettere connessioni dal frontend
+3. **Verifica i log**: Controlla i log su Render per errori del server
+4. **Test locale**: Prova prima in locale per verificare che tutto funzioni
+
+### "ID stanza non viene mostrato"
+
+1. **Controlla la connessione WebSocket**: Apri la console del browser per vedere se ci sono errori
+2. **Verifica il server**: Assicurati che il backend sia online e risponda
+3. **Test con curl**: Testa l'endpoint di health check: `curl https://your-backend-url/health`
+
+### Debug Avanzato
+
+1. **Console del browser**: Apri F12 → Console per vedere i log
+2. **Network tab**: Verifica le richieste WebSocket
+3. **Render logs**: Controlla i log del server su Render
+4. **Netlify logs**: Verifica i log di build su Netlify
+
+## 📝 Variabili d'Ambiente
+
+### Frontend (.env)
+```env
+VITE_SERVER_URL=https://your-render-app-name.onrender.com
+```
+
+### Backend (Render Environment Variables)
+```env
+CLIENT_URL=https://your-netlify-app-name.netlify.app
+FRONTEND_URL=https://your-netlify-app-name.netlify.app
+NODE_ENV=production
+PORT=3001
+```
+
 ## 🎯 Funzionalità
 
 ### Modalità di Gioco
@@ -80,89 +165,18 @@ npm run build
 - **Socket.IO** per WebSocket
 - **UUID** per generazione ID stanze
 
-## 📁 Struttura del Progetto
+## 📞 Supporto
 
-```
-blindsketch-multiplayer/
-├── src/
-│   ├── components/          # Componenti React
-│   │   ├── HomeScreen.tsx   # Schermata iniziale
-│   │   ├── LobbyScreen.tsx  # Lobby di attesa
-│   │   ├── GameScreen.tsx   # Schermata di gioco
-│   │   ├── DrawingCanvas.tsx # Canvas per disegnare
-│   │   ├── Chat.tsx         # Chat component
-│   │   └── ...
-│   ├── hooks/               # Custom hooks
-│   │   └── useSocket.ts     # Hook per Socket.IO
-│   ├── types/               # Definizioni TypeScript
-│   │   └── game.ts          # Tipi del gioco
-│   └── App.tsx              # Componente principale
-├── server/
-│   └── index.js             # Server backend
-└── package.json
-```
-
-## 🎨 Design e UI
-
-### Palette Colori
-- **Bianco**: `#FFFFFF` (background principale)
-- **Nero**: `#000000` (testi e icone)
-- **Arancione**: `#FFA500` (accenti e bottoni)
-
-### Caratteristiche UI
-- Design minimalista e moderno
-- Transizioni fluide
-- Responsive design
-- Feedback visivo per le interazioni
-
-## 🔧 Configurazione Avanzata
-
-### Variabili d'Ambiente
-Crea un file `.env` per configurazioni personalizzate:
-
-```env
-VITE_SERVER_URL=http://localhost:3001
-PORT=3001
-```
-
-### Deploy in Produzione
-
-#### Frontend (Netlify/Vercel)
-```bash
-npm run build
-# Carica la cartella dist/
-```
-
-#### Backend (Heroku/Railway/DigitalOcean)
-Il server deve essere deployato separatamente su una piattaforma che supporta Node.js e WebSocket.
-
-## 🐛 Risoluzione Problemi
-
-### Problemi Comuni
-
-1. **"Non connesso al server"**
-   - Assicurati che il server sia in esecuzione su porta 3001
-   - Controlla che non ci siano firewall che bloccano la connessione
-
-2. **"Impossibile creare/entrare in stanza"**
-   - Verifica la connessione WebSocket
-   - Riavvia il server se necessario
-
-3. **Canvas non funziona**
-   - Assicurati di essere in modalità desktop
-   - Controlla la console per errori JavaScript
-
-### Debug
-Apri la console del browser (F12) per vedere i log di connessione e eventuali errori.
-
-## 📝 Licenza
-
-Questo progetto è rilasciato sotto licenza MIT.
+Per supporto o domande:
+1. Controlla i log della console del browser
+2. Verifica che entrambi i servizi siano online
+3. Testa prima in locale per isolare il problema
+4. Apri un issue nel repository GitHub
 
 ## 🤝 Contributi
 
 I contributi sono benvenuti! Sentiti libero di aprire issue o pull request.
 
-## 📞 Supporto
+## 📝 Licenza
 
-Per supporto o domande, apri un issue nel repository GitHub.
+Questo progetto è rilasciato sotto licenza MIT.

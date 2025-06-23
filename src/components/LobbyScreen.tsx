@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Settings, Play, Copy, Crown } from 'lucide-react';
+import { Users, Settings, Play, Copy, Crown, Check } from 'lucide-react';
 import { Room, Player } from '../types/game';
 
 interface LobbyScreenProps {
@@ -17,11 +17,25 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onStartGame,
   onLeaveRoom
 }) => {
-  const copyRoomId = () => {
-    const url = `${window.location.origin}?room=${room.id}`;
-    navigator.clipboard.writeText(url);
-    // Simple feedback - in a real app you might show a toast
-    console.log('Room URL copied to clipboard');
+  const [copied, setCopied] = React.useState(false);
+
+  const copyRoomId = async () => {
+    try {
+      await navigator.clipboard.writeText(room.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy room ID:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = room.id;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const playersList = Object.values(room.players);
@@ -35,15 +49,28 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <h1 className="text-4xl font-bold text-black mb-2">Lobby di Gioco</h1>
           <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
             <span>ID Stanza:</span>
-            <span className="font-mono font-bold text-orange-500">{room.id}</span>
+            <span className="font-mono font-bold text-orange-500 text-2xl">{room.id}</span>
             <button
               onClick={copyRoomId}
-              className="p-1 hover:bg-gray-100 rounded transition-colors"
-              title="Copia link stanza"
+              className="p-2 hover:bg-gray-100 rounded transition-colors flex items-center gap-1"
+              title="Copia ID stanza"
             >
-              <Copy className="w-4 h-4" />
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span className="text-sm text-green-500">Copiato!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span className="text-sm">Copia</span>
+                </>
+              )}
             </button>
           </div>
+          <p className="text-sm text-gray-500 mt-2">
+            Condividi questo ID con i tuoi amici per farli entrare nella stanza
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

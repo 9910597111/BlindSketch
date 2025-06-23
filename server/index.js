@@ -5,11 +5,33 @@ import { v4 as uuidv4 } from 'uuid';
 
 const app = express();
 const server = createServer(app);
+
+// Get allowed origins from environment or use defaults
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+console.log('Allowed CORS origins:', allowedOrigins);
+
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"]
+    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
+    methods: ["GET", "POST"],
+    credentials: true
   }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    rooms: rooms.size,
+    connections: io.engine.clientsCount
+  });
 });
 
 // In-memory storage for game state
@@ -24,7 +46,7 @@ const WORD_LISTS = {
 };
 
 function createRoom(settings = {}) {
-  const roomId = uuidv4().slice(0, 8);
+  const roomId = uuidv4().slice(0, 8).toUpperCase();
   const defaultSettings = {
     maxPlayers: 6,
     rounds: 3,
@@ -50,6 +72,7 @@ function createRoom(settings = {}) {
   };
   
   rooms.set(roomId, room);
+  console.log(`Room created: ${roomId}, Total rooms: ${rooms.size}`);
   return room;
 }
 
@@ -167,6 +190,7 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   
   socket.on('createRoom', (data) => {
+    console.log('Creating room for:', data);
     const { playerName, settings } = data;
     const room = createRoom(settings);
     
@@ -178,6 +202,8 @@ io.on('connection', (socket) => {
     room.scores.set(socket.id, 0);
     
     socket.join(room.id);
+    
+    console.log(`Room ${room.id} created by ${playerName}`);
     
     socket.emit('roomCreated', {
       roomId: room.id,
@@ -193,15 +219,18 @@ io.on('connection', (socket) => {
   });
   
   socket.on('joinRoom', (data) => {
+    console.log('Joining room:', data);
     const { roomId, playerName } = data;
     const room = rooms.get(roomId);
     
     if (!room) {
+      console.log(`Room ${roomId} not found`);
       socket.emit('error', { message: 'Room not found' });
       return;
     }
     
     if (room.players.size >= room.settings.maxPlayers) {
+      console.log(`Room ${roomId} is full`);
       socket.emit('error', { message: 'Room is full' });
       return;
     }
@@ -213,6 +242,8 @@ io.on('connection', (socket) => {
     room.scores.set(socket.id, 0);
     
     socket.join(roomId);
+    
+    console.log(`${playerName} joined room ${roomId}`);
     
     socket.emit('roomJoined', {
       roomId: roomId,
@@ -247,6 +278,8 @@ io.on('connection', (socket) => {
         room.gameState = 'playing';
         room.currentRound = 0;
         
+        console.log(`Game started in room ${room.id}`);
+        
         io.to(room.id).emit('gameStarted');
         startRound(room);
         break;
@@ -263,6 +296,8 @@ io.on('connection', (socket) => {
         room.gameState = 'playing';
         
         const wordDisplay = word.replace(/./g, '_');
+        
+        console.log(`Word selected in room ${room.id}: ${word}`);
         
         io.to(room.id).emit('wordSelected', {
           word: wordDisplay,
@@ -337,6 +372,7 @@ io.on('connection', (socket) => {
           if (room.timer) clearTimeout(room.timer);
           rooms.delete(roomId);
           publicRooms.delete(roomId);
+          console.log(`Room ${roomId} deleted (empty)`);
         } else {
           io.to(roomId).emit('roomUpdate', {
             players: Object.fromEntries(room.players),
@@ -354,4 +390,6 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
 });
